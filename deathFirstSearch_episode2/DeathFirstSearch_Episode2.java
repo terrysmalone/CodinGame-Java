@@ -9,6 +9,7 @@ import java.math.*;
 class Player {
 
     private static int evaluations = 0;
+    private static int totalEvaluations = 0;
 
     public static void main(String args[]) {
         Graph linkGraph = new Graph();
@@ -76,6 +77,8 @@ class Player {
 
         int min = Integer.MAX_VALUE;
         Link bestSever = null;
+
+        totalEvaluations = 0;
         
         for (Link sever: allViableSevers) {
             evaluations = 0;
@@ -100,11 +103,14 @@ class Player {
             }
         } 
 
+        System.err.println("Total Evals: " + totalEvaluations);
+        
         return bestSever;
     }
 
     private static int getSurvivalTime(boolean ourMove, int agentPosition, List<Integer> exitGateways, Graph graph, int depth) {
         evaluations++;
+        totalEvaluations++;
 
         // Evaluate
         List<Integer> allAgentMoves = graph.getAdjVertices(agentPosition);
