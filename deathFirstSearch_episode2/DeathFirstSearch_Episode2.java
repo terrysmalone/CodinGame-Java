@@ -46,37 +46,10 @@ class Player {
 
             // We don't always want the shortest one. Sometimes we may need to block another
             // since a node can connect to two exits
-
-            int chosenId = -1;
-            boolean severFound = false;
+            int chosenId = getPrioritisedSever(shortestPaths);
             
-            for (int i = 0; i < shortestPaths.size(); i++) {
-                List<Integer> currentPath = shortestPaths.get(i);
-
-                // If the path is 2 long
-                if (currentPath.size() == 3) {
-                    int penultimateNode = currentPath.get(currentPath.size()-2);
-
-                    int connectedExits = countConnectedExits(penultimateNode, shortestPaths);
-
-                    if (connectedExits == 2) {
-                        chosenId = i;
-                        severFound = true;
-                        break;
-                    }
-                }
-            }
-            
-            if (!severFound) {
-                // Get the shortest one. The agent can reach here quicker
-                chosenId = -1;
-                int shortestPath = Integer.MAX_VALUE;
-                for (int i = 0; i < shortestPaths.size(); i++) {
-                    if (shortestPaths.get(i).size() < shortestPath && shortestPaths.get(i).size() > 0) {
-                        chosenId = i;
-                        shortestPath = shortestPaths.get(i).size();
-                    }
-                }
+            if (chosenId == -1) {
+                chosenId = getShortestPathSever(shortestPaths);
             }
             
             List<Integer> chosenOne = shortestPaths.get(chosenId);
@@ -87,6 +60,45 @@ class Player {
             System.out.println(output);
         }
     }
+
+    private static int getPrioritisedSever(List<List<Integer>> shortestPaths) {
+        int chosenId = -1;
+        boolean severFound = false;
+
+        for (int i = 0; i < shortestPaths.size(); i++) {
+            List<Integer> currentPath = shortestPaths.get(i);
+
+            // If the path is 2 long
+            if (currentPath.size() == 3) {
+                int penultimateNode = currentPath.get(currentPath.size()-2);
+
+                int connectedExits = countConnectedExits(penultimateNode, shortestPaths);
+
+                if (connectedExits == 2) {
+                    chosenId = i;
+                    severFound = true;
+                    break;
+                }
+            }
+        }
+
+        return chosenId;
+    }
+
+     private static int getShortestPathSever(List<List<Integer>> shortestPaths) {
+        int chosenId = -1;
+        
+        // Get the shortest one. The agent can reach here quicker
+        int shortestPath = Integer.MAX_VALUE;
+        for (int i = 0; i < shortestPaths.size(); i++) {
+            if (shortestPaths.get(i).size() < shortestPath && shortestPaths.get(i).size() > 0) {
+                chosenId = i;
+                shortestPath = shortestPaths.get(i).size();
+            }
+        }
+
+        return chosenId;
+     }
 
     private static int countConnectedExits(int nodeId, List<List<Integer>> shortestPaths)
     {
