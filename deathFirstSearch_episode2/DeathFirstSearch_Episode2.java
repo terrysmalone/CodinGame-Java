@@ -73,8 +73,10 @@ class Player {
         // Get all possible severs
         List<Link> allViableSevers = graph.getAllViableSevers(exitGateways);
 
-        int max = Integer.MIN_VALUE;
+        int min = Integer.MAX_VALUE;
         Link bestSever = null;
+
+        int maxDepth = 6;
         
         for (Link sever: allViableSevers) {
             evaluations = 0;
@@ -83,10 +85,10 @@ class Player {
             // make sever
             graph.removeEdge(sever.getNode1(), sever.getNode2());
 
-            int survivalTime = getSurvivalTime(false, agentPosition, exitGateways, graph, 0);
+            int survivalTime = getSurvivalTime(false, agentPosition, exitGateways, graph, maxDepth);
 
-            if (survivalTime > max) {
-                max = survivalTime;
+            if (survivalTime < min) {
+                min = survivalTime;
                 bestSever = new Link(sever.getNode1(), sever.getNode2());
             }
             // unmake sever
@@ -94,7 +96,7 @@ class Player {
 
             System.err.println("Sever(" + sever.getNode1() + "," + sever.getNode2() + "):" + survivalTime + " - Evals: " + evaluations);
         
-            if (survivalTime >= Integer.MAX_VALUE/2) {
+            if (survivalTime <= Integer.MIN_VALUE/2) {
                 break;
             }
         } 
@@ -102,19 +104,23 @@ class Player {
         return bestSever;
     }
 
-    private static int getSurvivalTime(boolean ourMove, int agentPosition, List<Integer> exitGateways, Graph graph, int currentSurvivalTime) {
+    private static int getSurvivalTime(boolean ourMove, int agentPosition, List<Integer> exitGateways, Graph graph, int depth) {
         evaluations++;
 
         List<Link> allSevers = graph.getAllViableSevers(exitGateways);
 
         if (allSevers.size() == 0) {
-            return currentSurvivalTime + (Integer.MAX_VALUE/2);
+            return (Integer.MIN_VALUE/2) - depth;
         }
 
         List<Integer> allAgentMoves = graph.getAdjVertices(agentPosition);
 
         if (allAgentMoves.size() == 0) {
-            return currentSurvivalTime + (Integer.MAX_VALUE/2);
+            return (Integer.MIN_VALUE/2) - depth;
+        }
+
+        if (depth == 0) {
+            return 0;
         }
         
         //String space = "";
@@ -122,11 +128,7 @@ class Player {
         //    space += " ";
         //}
         if (ourMove) {
-            if (currentSurvivalTime >= 6) {
-                return currentSurvivalTime;
-            }
-
-            int max = Integer.MIN_VALUE / 2;
+            int min = Integer.MAX_VALUE / 2;
             // Link bestSever = new Link(-1, -1);
 
             for (Link sever: allSevers) {
@@ -135,37 +137,33 @@ class Player {
                 //   make sever
                 graph.removeEdge(sever.getNode1(), sever.getNode2());
 
-                int survivalTime = getSurvivalTime(!ourMove, agentPosition, exitGateways, graph, currentSurvivalTime + 1);
+                int survivalTime = getSurvivalTime(!ourMove, agentPosition, exitGateways, graph, depth - 1);
                 // System.err.println("Survival time: " + survivalTime);
 
-                if (survivalTime > max) {
-                    max = survivalTime;
+                if (survivalTime < min) {
+                    min = survivalTime;
                     // bestSever = new Link(sever.getNode1(), sever.getNode2());
                 }
 
                 // unmake sever
                 graph.addEdge(sever.getNode1(), sever.getNode2());
 
-                if (max >= Integer.MAX_VALUE/2) {
+                if (min <= Integer.MIN_VALUE/2) {
                     break;
                 }
             }
 
-            return max;
+            return min;
 
         } else {
             for (int move: allAgentMoves) {
                 if (exitGateways.contains(move)) {
                     // System.err.println(space + "Agent can get to an exitGateway");
-                    return currentSurvivalTime;
+                    return depth;
                 }
             }
 
-            if (currentSurvivalTime >= 6) {
-                return currentSurvivalTime;
-            }
-
-            int min = Integer.MAX_VALUE / 2;
+            int max = Integer.MIN_VALUE / 2;
             // int bestMove = -1;
 
             // int previousPosition = agentPosition;
@@ -176,15 +174,15 @@ class Player {
                 //  make agent move
                 //agentPosition = agentMove;
                 
-                int survivalTime = getSurvivalTime(!ourMove, agentMove, exitGateways, graph, currentSurvivalTime + 1);
+                int survivalTime = getSurvivalTime(!ourMove, agentMove, exitGateways, graph, depth - 1);
             
                 // System.err.println("Survival time: " + survivalTime);
-                if (survivalTime < min) {
-                    min = survivalTime;
+                if (survivalTime > max) {
+                    max = survivalTime;
                     // bestMove = current move
                 }
 
-                if (min <= Integer.MIN_VALUE/2) {
+                if (max >= Integer.MAX_VALUE/2) {
                     break;
                 }
 
@@ -192,7 +190,7 @@ class Player {
                 // agentPosition = previousPosition;
             }
 
-            return min;
+            return max;
         }
     }
 
