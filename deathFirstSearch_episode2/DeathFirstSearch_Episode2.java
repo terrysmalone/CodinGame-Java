@@ -69,14 +69,13 @@ class Player {
         }
     }
 
+    private static int maxDepth = 6;
     private static Link getBestSever(int agentPosition, List<Integer> exitGateways, Graph graph) {
         // Get all possible severs
         List<Link> allViableSevers = graph.getAllViableSevers(exitGateways);
 
         int min = Integer.MAX_VALUE;
         Link bestSever = null;
-
-        int maxDepth = 6;
         
         for (Link sever: allViableSevers) {
             evaluations = 0;
@@ -107,29 +106,32 @@ class Player {
     private static int getSurvivalTime(boolean ourMove, int agentPosition, List<Integer> exitGateways, Graph graph, int depth) {
         evaluations++;
 
-        List<Link> allSevers = graph.getAllViableSevers(exitGateways);
-
-        if (allSevers.size() == 0) {
-            return (Integer.MIN_VALUE/2) - depth;
-        }
-
+        // Evaluate
         List<Integer> allAgentMoves = graph.getAdjVertices(agentPosition);
 
         if (allAgentMoves.size() == 0) {
             return (Integer.MIN_VALUE/2) - depth;
         }
 
+        //String space = "";
+        //for (int i = 0; i < maxDepth-(depth-1); i++){
+        //    space += " ";
+        //}
+
         if (depth == 0) {
+            //System.err.println(space + "Hit max depth");
             return 0;
         }
         
-        //String space = "";
-        //for (int i = 0; i < currentSurvivalTime; i++){
-        //    space += " ";
-        //}
         if (ourMove) {
             int min = Integer.MAX_VALUE / 2;
             // Link bestSever = new Link(-1, -1);
+
+            List<Link> allSevers = graph.getAllViableSevers(exitGateways);
+
+            if (allSevers.size() == 1) {
+                return (Integer.MIN_VALUE/2) - depth;
+            }
 
             for (Link sever: allSevers) {
                 // System.err.println(space + "Checking Sever(" + sever.getNode1() + "," + sever.getNode2() + ")");
@@ -138,7 +140,7 @@ class Player {
                 graph.removeEdge(sever.getNode1(), sever.getNode2());
 
                 int survivalTime = getSurvivalTime(!ourMove, agentPosition, exitGateways, graph, depth - 1);
-                // System.err.println("Survival time: " + survivalTime);
+                // System.err.println(space + "Survival time: " + survivalTime);
 
                 if (survivalTime < min) {
                     min = survivalTime;
@@ -149,6 +151,7 @@ class Player {
                 graph.addEdge(sever.getNode1(), sever.getNode2());
 
                 if (min <= Integer.MIN_VALUE/2) {
+                    // System.err.println(space + "Hit cut off for our move");
                     break;
                 }
             }
@@ -159,20 +162,20 @@ class Player {
             for (int move: allAgentMoves) {
                 if (exitGateways.contains(move)) {
                     // System.err.println(space + "Agent can get to an exitGateway");
-                    return depth;
+                    return Integer.MAX_VALUE/2 + depth;
                 }
             }
 
             int max = Integer.MIN_VALUE / 2;
             // int bestMove = -1;
 
-            // int previousPosition = agentPosition;
+            int previousPosition = agentPosition;
 
             for (int agentMove: allAgentMoves) {
                 // System.err.println(space + "Checking Agent move: " + previousPosition + " to " + agentMove);
 
-                //  make agent move
-                //agentPosition = agentMove;
+                // make agent move
+                agentPosition = agentMove;
                 
                 int survivalTime = getSurvivalTime(!ourMove, agentMove, exitGateways, graph, depth - 1);
             
@@ -182,66 +185,17 @@ class Player {
                     // bestMove = current move
                 }
 
-                if (max >= Integer.MAX_VALUE/2) {
-                    break;
-                }
+                // unmake move
+                agentPosition = previousPosition;
 
-                //   unmake move
-                // agentPosition = previousPosition;
+                if (max >= Integer.MAX_VALUE/2) {
+                    // System.err.println("Hit cut off for our move");
+                    break;
+                }                
             }
 
             return max;
         }
-    }
-
-    private static int getPrioritisedSever(List<List<Integer>> shortestPaths) {
-        int chosenId = -1;
-        boolean severFound = false;
-
-        for (int i = 0; i < shortestPaths.size(); i++) {
-            List<Integer> currentPath = shortestPaths.get(i);
-
-            // If the path is 2 long
-            if (currentPath.size() == 3) {
-                int penultimateNode = currentPath.get(currentPath.size()-2);
-
-                int connectedExits = countConnectedExits(penultimateNode, shortestPaths);
-
-                if (connectedExits == 2) {
-                    chosenId = i;
-                    severFound = true;
-                    break;
-                }
-            }
-        }
-
-        return chosenId;
-    }
-
-     private static int getShortestPathSever(List<List<Integer>> shortestPaths) {
-        int chosenId = -1;
-        
-        // Get the shortest one. The agent can reach here quicker
-        int shortestPath = Integer.MAX_VALUE;
-        for (int i = 0; i < shortestPaths.size(); i++) {
-            if (shortestPaths.get(i).size() < shortestPath && shortestPaths.get(i).size() > 0) {
-                chosenId = i;
-                shortestPath = shortestPaths.get(i).size();
-            }
-        }
-
-        return chosenId;
-     }
-
-    private static int countConnectedExits(int nodeId, List<List<Integer>> shortestPaths)
-    {
-        int count = 0;
-        for (List<Integer> path: shortestPaths) {
-            if (path.size() >= 3 && path.get(path.size()-2) == nodeId) {
-                count++;
-            }
-        }
-        return count;
     }
 
     private static void displayPath(List<Integer> path) {
