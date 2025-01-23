@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.stream.*;
 import java.io.*;
 import java.math.*;
 
@@ -7,9 +8,6 @@ import java.math.*;
  * the standard input according to the problem statement.
  **/
 class Player {
-
-    private static int evaluations = 0;
-    private static int totalEvaluations = 0;
 
     public static void main(String args[]) {
         Graph linkGraph = new Graph();
@@ -38,218 +36,58 @@ class Player {
             // Write an action using System.out.println()
             // To debug: System.err.println("Debug messages...");
 
-            
-            Link bestSever = getBestSever(agentPosition, exitGateways, linkGraph);
+            List<Link> allViableSevers = linkGraph.getAllViableSevers(exitGateways);
 
-            // Get the shortest paths to all gateways 
-            // List<List<Integer>> shortestPaths = new ArrayList<List<Integer>>();
-            // for (int exitGateway: exitGateways) {
-            //     List<Integer> shortestPath = linkGraph.findShortestPath(agentPosition, exitGateway);
-            //     shortestPaths.add(shortestPath);
+            Map<Link, Integer> priorities = new HashMap<Link, Integer>();
 
-            //    displayPath(shortestPath);  
-            // }
+            for (Link sever: allViableSevers) {
+                priorities.putIfAbsent(sever, calculatePriority(agentPosition, sever, allViableSevers, linkGraph, exitGateways));
+            }
+            
+            // Order by priority
+            List<Link> sortedPriorities = priorities.entrySet()
+            .stream()
+            .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
 
-            // We don't always want the shortest one. Sometimes we may need to block another
-            // since a node can connect to two exits
-            // int chosenId = getPrioritisedSever(shortestPaths);
-            
-            // if (chosenId == -1) {
-            //     chosenId = getShortestPathSever(shortestPaths);
-            // }
-            
-            //List<Integer> chosenOne = shortestPaths.get(chosenId);
-            // String output = chosenOne.get(chosenOne.size() - 2) + " " + chosenOne.get(chosenOne.size() - 1);
+            String output = sortedPriorities.get(0).getNode1() + " " + sortedPriorities.get(0).getNode2();
 
-            // linkGraph.removeEdge(chosenOne.get(chosenOne.size() - 2), chosenOne.get(chosenOne.size() - 1));
-            
-            String output = bestSever.getNode1() + " " + bestSever.getNode2();
-            linkGraph.removeEdge(bestSever.getNode1(), bestSever.getNode2());
+            linkGraph.removeEdge(sortedPriorities.get(0).getNode1(), sortedPriorities.get(0).getNode2());
             // Example: 0 1 are the indices of the nodes you wish to sever the link between
             System.out.println(output);
         }
     }
 
-    private static int maxDepth = 6;
-    private static Link getBestSever(int agentPosition, List<Integer> exitGateways, Graph graph) {
-        graph.setNearestExitGatewayMatrix(exitGateways);
-        // Get all possible severs
-        List<Link> allViableSevers = graph.getAllViableSevers(exitGateways);
+    private static int calculatePriority(int agentPosition, Link sever, List<Link> allViableSevers, Graph graph, List<Integer> exitGateways) {
+        // get shortest path to sever.getNode1()
+        List<Integer> shortestPath = graph.findShortestPath(agentPosition, sever.getNode1(), exitGateways);
 
-        int min = Integer.MAX_VALUE;
-        Link bestSever = null;
-
-        totalEvaluations = 0;
-        
-        for (Link sever: allViableSevers) {
-            evaluations = 0;
-            System.err.println("Checking Sever(" + sever.getNode1() + "," + sever.getNode2() + ")");
-
-            // make sever
-            graph.removeEdge(sever.getNode1(), sever.getNode2());
-
-            int survivalTime = getSurvivalTime(false, agentPosition, exitGateways, graph, maxDepth);
-
-            if (survivalTime < min) {
-                min = survivalTime;
-                bestSever = new Link(sever.getNode1(), sever.getNode2());
-            }
-            // unmake sever
-            graph.addEdge(sever.getNode1(), sever.getNode2());
-
-            System.err.println("Sever(" + sever.getNode1() + "," + sever.getNode2() + "):" + survivalTime + " - Evals: " + evaluations);
-        
-            if (survivalTime <= Integer.MIN_VALUE/2) {
-                break;
-            }
-        } 
-
-        System.err.println("Total Evals: " + totalEvaluations);
-        
-        return bestSever;
-    }
-
-    private static int getSurvivalTime(boolean ourMove, int agentPosition, List<Integer> exitGateways, Graph graph, int depth) {
-        evaluations++;
-        totalEvaluations++;
-
-        // Evaluate
-        List<Integer> allAgentMoves = graph.getAdjVertices(agentPosition);
-    
-        if (allAgentMoves.size() == 0) {
-            return (Integer.MIN_VALUE/2) - depth;
+        if (shortestPath.size() == 1) {
+            return Integer.MAX_VALUE;
         }
 
-        // remove ones that are going further away
-        //System.err.println("Before: " + allAgentMoves.size());
-        //display(allAgentMoves);
-        int closestGateway = graph.distanceToNearestExitGateway(agentPosition);
+        int adjacentExits = 0;
 
-        for (int i = allAgentMoves.size()-1; i >= 0; i--) {
-            int closestToGateway = graph.distanceToNearestExitGateway(allAgentMoves.get(i));
+        for (int i = 1; i < shortestPath.size(); i++) {
+            int pathPoint = shortestPath.get(i);
 
-            if (closestGateway < closestToGateway) {
-                allAgentMoves.remove(i);
-            }
-        }
-
-        //System.err.println("After: " + allAgentMoves.size());
-        //display(allAgentMoves);
-
-        //String space = "";
-        //for (int i = 0; i < maxDepth-(depth-1); i++){
-        //    space += " ";
-        //}
-
-        if (depth == 0) {
-            //System.err.println(space + "Hit max depth");
-            return 0;
-        }
-        
-        if (ourMove) {
-            int min = Integer.MAX_VALUE / 2;
-            // Link bestSever = new Link(-1, -1);
-
-            List<Link> allSevers = graph.getAllViableSevers(exitGateways);
-
-            if (allSevers.size() == 1) {
-                return (Integer.MIN_VALUE/2) - depth;
-            }
-
-            for (Link sever: allSevers) {
-                // System.err.println(space + "Checking Sever(" + sever.getNode1() + "," + sever.getNode2() + ")");
-
-                //   make sever
-                graph.removeEdge(sever.getNode1(), sever.getNode2());
-
-                int survivalTime = getSurvivalTime(!ourMove, agentPosition, exitGateways, graph, depth - 1);
-                // System.err.println(space + "Survival time: " + survivalTime);
-
-                if (survivalTime < min) {
-                    min = survivalTime;
-                    // bestSever = new Link(sever.getNode1(), sever.getNode2());
-                }
-
-                // unmake sever
-                graph.addEdge(sever.getNode1(), sever.getNode2());
-
-                if (min <= Integer.MIN_VALUE/2) {
-                    // System.err.println(space + "Hit cut off for our move");
-                    break;
+            for (Link viableSever: allViableSevers) {
+                if (viableSever.getNode1() == pathPoint) {
+                    adjacentExits++;
                 }
             }
-
-            return min;
-
-        } else {
-            for (int move: allAgentMoves) {
-                if (exitGateways.contains(move)) {
-                    // System.err.println(space + "Agent can get to an exitGateway");
-                    return Integer.MAX_VALUE/2 + depth;
-                }
-            }
-
-            // Order by closest to an exit gateway
-            //display(allAgentMoves);
-            // allAgentMoves.sort((a, b) -> Integer.compare(closestToAnExitGateway(a, graph, exitGateways), closestToAnExitGateway(b, graph, exitGateways)));
-            //display(allAgentMoves);
-
-            int max = Integer.MIN_VALUE / 2;
-            // int bestMove = -1;
-
-            int previousPosition = agentPosition;
-
-            for (int agentMove: allAgentMoves) {
-                // System.err.println(space + "Checking Agent move: " + previousPosition + " to " + agentMove);
-
-                // make agent move
-                agentPosition = agentMove;
-                
-                int survivalTime = getSurvivalTime(!ourMove, agentMove, exitGateways, graph, depth - 1);
-            
-                // System.err.println("Survival time: " + survivalTime);
-                if (survivalTime > max) {
-                    max = survivalTime;
-                    // bestMove = current move
-                }
-
-                // unmake move
-                agentPosition = previousPosition;
-
-                if (max >= Integer.MAX_VALUE/2) {
-                    // System.err.println("Hit cut off for our move");
-                    break;
-                }                
-            }
-
-            return max;
         }
-    }
 
-    private static int closestToAnExitGateway(int agentPosition, Graph graph, List<Integer> exitGateways) {
-        int closest = Integer.MAX_VALUE;
-        for (int exitGateway: exitGateways) {
-            int distance = graph.findShortestPath(agentPosition, exitGateway).size();
+        int size = shortestPath.size() - 1;
+        int priority = ((adjacentExits - size) * 50) - size;
 
-            if (distance < closest) {
-                closest = distance;
-            }
-        }
-        
-        return closest;
-    }
-
-    private static void display(List<Integer> list) {
-        for (int i = 0; i < list.size(); i++) {
-            System.err.print(list.get(i) + ",");
-        }
-        System.err.println();
+        return priority;
     }
 }
 
 class Graph {
     private HashMap<Integer, List<Integer>> adjacencyList = new HashMap<Integer, List<Integer>>();
-    private HashMap<Integer, Integer> nearestExitGateway = new HashMap<Integer, Integer>();
 
     public void addEdge(int node1, int node2) {
         adjacencyList.putIfAbsent(node1, new ArrayList<>());
@@ -270,19 +108,11 @@ class Graph {
     }
 
     public List<Integer> getAdjVertices(int node) {
-        List<Integer> oldList = adjacencyList.get(node);
-        List<Integer> list = new ArrayList<Integer>();
-
-        for(int val: oldList) {
-            list.add(val);
-        }
-
-        return list;
-        
+        return adjacencyList.get(node);
     }
 
     // Find the shortest path using a breadth first search
-    public List<Integer> findShortestPath(int start, int end) {
+    public List<Integer> findShortestPath(int start, int end, List<Integer> exitGateways) {
         // Check that both nodes exist
         if (!adjacencyList.containsKey(start) || !adjacencyList.containsKey(end)) {
             return Collections.emptyList();
@@ -291,6 +121,11 @@ class Graph {
         Queue<Integer> queue = new LinkedList<>();
         Map<Integer, Integer> parentMap = new HashMap<>();
         Set<Integer> visited = new HashSet<>();
+
+        // Add the vertices to visited. We can't walk over them
+        for (int exitGateway: exitGateways) {
+            visited.add(exitGateway);
+        }
 
         queue.add(start);
         visited.add(start);
@@ -341,31 +176,6 @@ class Graph {
         }
 
         return severs;
-    }
-
-    public void setNearestExitGatewayMatrix(List<Integer> exitGateways) {
-        nearestExitGateway.clear();
-
-        for (var entry : adjacencyList.entrySet()) {
-            nearestExitGateway.putIfAbsent(entry.getKey(), closestToAnExitGateway(entry.getKey(), exitGateways));
-        }
-    }
-
-    private int closestToAnExitGateway(int position, List<Integer> exitGateways) {
-        int closest = Integer.MAX_VALUE;
-        for (int exitGateway: exitGateways) {
-            int distance = findShortestPath(position, exitGateway).size();
-
-            if (distance < closest) {
-                closest = distance;
-            }
-        }
-        
-        return closest;
-    }
-
-    public int distanceToNearestExitGateway(int vertice) {
-        return nearestExitGateway.get(vertice);
     }
 }
 
