@@ -39,26 +39,71 @@ class Player {
             List<List<Integer>> shortestPaths = new ArrayList<List<Integer>>();
             for (int exitGateway: exitGateways) {
                 List<Integer> shortestPath = linkGraph.findShortestPath(agentPosition, exitGateway);
-                shortestPaths.add(shortestPath);    
+                shortestPaths.add(shortestPath);
+
+                displayPath(shortestPath);  
             }
 
-            // Get the shortest one. The agent can reach here quicker
-            int shortestId = -1;
-            int shortestPath = Integer.MAX_VALUE;
+            // We don't always want the shortest one. Sometimes we may need to block another
+            // since a node can connect to two exits
+
+            int chosenId = -1;
+            boolean severFound = false;
+            
             for (int i = 0; i < shortestPaths.size(); i++) {
-                if (shortestPaths.get(i).size() < shortestPath && shortestPaths.get(i).size() > 0) {
-                    shortestId = i;
-                    shortestPath = shortestPaths.get(i).size();
+                List<Integer> currentPath = shortestPaths.get(i);
+
+                // If the path is 2 long
+                if (currentPath.size() == 3) {
+                    int penultimateNode = currentPath.get(currentPath.size()-2);
+
+                    int connectedExits = countConnectedExits(penultimateNode, shortestPaths);
+
+                    if (connectedExits == 2) {
+                        chosenId = i;
+                        severFound = true;
+                        break;
+                    }
                 }
             }
             
-            List<Integer> shortestOne = shortestPaths.get(shortestId);
-            String output = shortestOne.get(0) + " " + shortestOne.get(1);
+            if (!severFound) {
+                // Get the shortest one. The agent can reach here quicker
+                chosenId = -1;
+                int shortestPath = Integer.MAX_VALUE;
+                for (int i = 0; i < shortestPaths.size(); i++) {
+                    if (shortestPaths.get(i).size() < shortestPath && shortestPaths.get(i).size() > 0) {
+                        chosenId = i;
+                        shortestPath = shortestPaths.get(i).size();
+                    }
+                }
+            }
+            
+            List<Integer> chosenOne = shortestPaths.get(chosenId);
+            String output = chosenOne.get(chosenOne.size() - 2) + " " + chosenOne.get(chosenOne.size() - 1);
 
-            linkGraph.removeEdge(shortestOne.get(0), shortestOne.get(1));
+            linkGraph.removeEdge(chosenOne.get(chosenOne.size() - 2), chosenOne.get(chosenOne.size() - 1));
             // Example: 0 1 are the indices of the nodes you wish to sever the link between
             System.out.println(output);
         }
+    }
+
+    private static int countConnectedExits(int nodeId, List<List<Integer>> shortestPaths)
+    {
+        int count = 0;
+        for (List<Integer> path: shortestPaths) {
+            if (path.size() >= 3 && path.get(path.size()-2) == nodeId) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static void displayPath(List<Integer> path) {
+        for (int i = 0; i < path.size(); i++) {
+            System.err.print(path.get(i) + " ");
+        }
+        System.err.println();
     }
 }
 
