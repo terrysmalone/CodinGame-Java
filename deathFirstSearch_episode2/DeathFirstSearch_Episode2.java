@@ -72,6 +72,7 @@ class Player {
 
     private static int maxDepth = 6;
     private static Link getBestSever(int agentPosition, List<Integer> exitGateways, Graph graph) {
+        graph.setNearestExitGatewayMatrix(exitGateways);
         // Get all possible severs
         List<Link> allViableSevers = graph.getAllViableSevers(exitGateways);
 
@@ -114,10 +115,26 @@ class Player {
 
         // Evaluate
         List<Integer> allAgentMoves = graph.getAdjVertices(agentPosition);
-
+    
         if (allAgentMoves.size() == 0) {
             return (Integer.MIN_VALUE/2) - depth;
         }
+
+        // remove ones that are going further away
+        //System.err.println("Before: " + allAgentMoves.size());
+        //display(allAgentMoves);
+        int closestGateway = graph.distanceToNearestExitGateway(agentPosition);
+
+        for (int i = allAgentMoves.size()-1; i >= 0; i--) {
+            int closestToGateway = graph.distanceToNearestExitGateway(allAgentMoves.get(i));
+
+            if (closestGateway < closestToGateway) {
+                allAgentMoves.remove(i);
+            }
+        }
+
+        //System.err.println("After: " + allAgentMoves.size());
+        //display(allAgentMoves);
 
         //String space = "";
         //for (int i = 0; i < maxDepth-(depth-1); i++){
@@ -172,6 +189,11 @@ class Player {
                 }
             }
 
+            // Order by closest to an exit gateway
+            //display(allAgentMoves);
+            // allAgentMoves.sort((a, b) -> Integer.compare(closestToAnExitGateway(a, graph, exitGateways), closestToAnExitGateway(b, graph, exitGateways)));
+            //display(allAgentMoves);
+
             int max = Integer.MIN_VALUE / 2;
             // int bestMove = -1;
 
@@ -204,9 +226,22 @@ class Player {
         }
     }
 
-    private static void displayPath(List<Integer> path) {
-        for (int i = 0; i < path.size(); i++) {
-            System.err.print(path.get(i) + " ");
+    private static int closestToAnExitGateway(int agentPosition, Graph graph, List<Integer> exitGateways) {
+        int closest = Integer.MAX_VALUE;
+        for (int exitGateway: exitGateways) {
+            int distance = graph.findShortestPath(agentPosition, exitGateway).size();
+
+            if (distance < closest) {
+                closest = distance;
+            }
+        }
+        
+        return closest;
+    }
+
+    private static void display(List<Integer> list) {
+        for (int i = 0; i < list.size(); i++) {
+            System.err.print(list.get(i) + ",");
         }
         System.err.println();
     }
@@ -214,6 +249,7 @@ class Player {
 
 class Graph {
     private HashMap<Integer, List<Integer>> adjacencyList = new HashMap<Integer, List<Integer>>();
+    private HashMap<Integer, Integer> nearestExitGateway = new HashMap<Integer, Integer>();
 
     public void addEdge(int node1, int node2) {
         adjacencyList.putIfAbsent(node1, new ArrayList<>());
@@ -234,7 +270,15 @@ class Graph {
     }
 
     public List<Integer> getAdjVertices(int node) {
-        return adjacencyList.get(node);
+        List<Integer> oldList = adjacencyList.get(node);
+        List<Integer> list = new ArrayList<Integer>();
+
+        for(int val: oldList) {
+            list.add(val);
+        }
+
+        return list;
+        
     }
 
     // Find the shortest path using a breadth first search
@@ -297,6 +341,31 @@ class Graph {
         }
 
         return severs;
+    }
+
+    public void setNearestExitGatewayMatrix(List<Integer> exitGateways) {
+        nearestExitGateway.clear();
+
+        for (var entry : adjacencyList.entrySet()) {
+            nearestExitGateway.putIfAbsent(entry.getKey(), closestToAnExitGateway(entry.getKey(), exitGateways));
+        }
+    }
+
+    private int closestToAnExitGateway(int position, List<Integer> exitGateways) {
+        int closest = Integer.MAX_VALUE;
+        for (int exitGateway: exitGateways) {
+            int distance = findShortestPath(position, exitGateway).size();
+
+            if (distance < closest) {
+                closest = distance;
+            }
+        }
+        
+        return closest;
+    }
+
+    public int distanceToNearestExitGateway(int vertice) {
+        return nearestExitGateway.get(vertice);
     }
 }
 
