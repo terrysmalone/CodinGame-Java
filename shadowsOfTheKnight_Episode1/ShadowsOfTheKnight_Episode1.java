@@ -39,35 +39,51 @@ class Player {
             updateBoundaries(currentPoint, bombDirection);
             // Write an action using System.out.println()
             // To debug: System.err.println("Debug messages...");
-            
-            Point delta = getDelta(bombDirection);
 
-            if (delta == new Point(0, 0)) {
-                System.err.println("Error: No direction delta found");
+            int xPos = 0;
+            int yPos = 0;
+
+            switch(bombDirection) {
+                case  Direction.UP:
+                    xPos = currentPoint.x;
+                    yPos = getUpMove(currentPoint);
+                    break;
+                case Direction.UP_RIGHT:
+                    xPos = getRightMove(currentPoint);
+                    yPos = getUpMove(currentPoint);
+                    break;
+                case Direction.RIGHT:
+                    xPos = getRightMove(currentPoint);
+                    yPos = currentPoint.y;
+                    break;
+                case Direction.DOWN_RIGHT:
+                    xPos = getRightMove(currentPoint);
+                    yPos = getDownMove(currentPoint);
+                    break;
+                case Direction.DOWN:
+                    xPos = currentPoint.x;
+                    yPos = getDownMove(currentPoint);
+                    break;
+                case Direction.DOWN_LEFT:
+                    xPos = getLeftMove(currentPoint);
+                    yPos = getDownMove(currentPoint);
+                    break;
+                case Direction.LEFT:
+                    xPos = getLeftMove(currentPoint);
+                    yPos = currentPoint.y;
+                    break;
+                case Direction.UP_LEFT:
+                    xPos = getLeftMove(currentPoint);
+                    yPos = getUpMove(currentPoint);
+                    break;
+                case Direction.NONE:
+                    break;
             }
 
-            System.err.println("delta: " + delta);
-
-            System.err.println("lowYBoundary: " + lowYBoundary);
-            System.err.println("highYBoundary: " + highYBoundary);
-
-            int possibleMoves = calculatePossibleMoves(currentPoint, delta);
-
-            System.err.println("possibleMoves: " + possibleMoves);
-
-            Point move = new Point(0,0);
-            if (possibleMoves == 1) {
-                 move = calculateMove(currentPoint, delta, possibleMoves);
-            } else {
-                move = calculateMove(currentPoint, delta, possibleMoves/2);
-            }
-
-            currentPoint = new Point(move.x, move.y);
-            
-            System.err.println("move: " + move);
+            currentPoint = new Point(xPos, yPos);
 
             // the location of the next window Batman should jump to.
-            System.out.println(move.x + " " + move.y);
+            System.out.println(currentPoint.x + " " + currentPoint.y);
         }
     }
 
@@ -94,87 +110,80 @@ class Player {
         return Direction.NONE;
     }
 
-    private static Point getDelta(Direction bombDirection) {
-        switch(bombDirection) {
-            case  Direction.UP:
-                return new Point(0, -1);
-            case Direction.UP_RIGHT:
-                return new Point(1, -1);
-            case Direction.RIGHT:
-                return new Point(1, 0);
-            case Direction.DOWN_RIGHT:
-                return new Point(1, 1);
-            case Direction.DOWN:
-                return new Point(0, 1);
-            case Direction.DOWN_LEFT:
-                return new Point(-1, 1);
-            case Direction.LEFT:
-                return new Point(-1, 0);
-            case Direction.UP_LEFT:
-                return new Point(-1, -1);
-            case Direction.NONE:
-                return new Point(0, 0);
+    private static int getUpMove(Point currentPoint) {
+    
+        if (currentPoint.y - lowYBoundary == 0) {
+            return currentPoint.y;
+        } else if (currentPoint.y - lowYBoundary == 1) {
+            return currentPoint.y - 1;
+        } else {
+            return currentPoint.y - (int)Math.round((double)(currentPoint.y - lowYBoundary) / 2);
         }
-
-        return new Point(0,0);
     }
 
-    private static int calculatePossibleMoves(Point currentPoint, Point delta) {
-        int moves = 0;
-
-        Point checkPoint = new Point(currentPoint.x + delta.x, currentPoint.y + delta.y);
-
-        while (isWithinBounds(checkPoint)) {
-            moves++;
-            checkPoint = new Point(checkPoint.x + delta.x, checkPoint.y + delta.y);         
+    private static int getLeftMove(Point currentPoint) {
+    
+        if (currentPoint.x - lowXBoundary == 0) {
+            return currentPoint.x;
+        } else if (currentPoint.x - lowXBoundary == 1) {
+            return currentPoint.x - 1;
+        } else {
+            return currentPoint.x - (int)Math.round((double)(currentPoint.x - lowXBoundary) / 2);
         }
-
-        return moves;
     }
 
-    private static Point calculateMove(Point currentPoint, Point delta, int numberOfMoves) {
-        return new Point(currentPoint.x + (delta.x * numberOfMoves), currentPoint.y + (delta.y * numberOfMoves));
+    private static int getRightMove(Point currentPoint) {
+        
+        if (highXBoundary - currentPoint.x == 0) {
+            return currentPoint.x;
+        } else if (highXBoundary - currentPoint.x == 1) {
+            return currentPoint.x + 1;
+        } else {
+            return currentPoint.x + (int)Math.round((double)(highXBoundary - currentPoint.x) / 2.0);
+        }
     }
 
-
-    private static Boolean isWithinBounds(Point point) {
-        if (point.x < lowXBoundary || point.x > highXBoundary || point.y < lowYBoundary || point.y > highYBoundary) {
-            return false;
-        } 
-
-        return true;
+    private static int getDownMove(Point currentPoint) {
+    
+        if (highYBoundary - currentPoint.y == 0) {
+            return currentPoint.y;
+        } else if (highYBoundary - currentPoint.y == 1) {
+            return currentPoint.y + 1;
+        } else {
+            return currentPoint.y + (int)Math.round((double)(highYBoundary - currentPoint.y) / 2);
+        }
     }
 
     private static void updateBoundaries(Point point, Direction bombDirection) {
         
         switch(bombDirection) {
             case  Direction.UP:
-                highYBoundary = point.y + 1;
+                highYBoundary = point.y - 1;
                 break;
             case Direction.UP_RIGHT:
-                highYBoundary = point.y + 1;
-                lowXBoundary = point.x - 1;
+                highYBoundary = point.y - 1;
+                lowXBoundary = point.x + 1;
                 break;
             case Direction.RIGHT:
-                lowXBoundary = point.x - 1;
+                lowXBoundary = point.x + 1;
                 break;
             case Direction.DOWN_RIGHT:
-                lowYBoundary = point.y - 1;
-                lowXBoundary = point.x - 1;
+                lowYBoundary = point.y + 1;
+                lowXBoundary = point.x + 1;
                 break;
             case Direction.DOWN:
-                lowYBoundary = point.y - 1;
+                lowYBoundary = point.y + 1;
                 break;
             case Direction.DOWN_LEFT:
-                lowYBoundary = point.y - 1;
-                highXBoundary = point.x + 1;
+                lowYBoundary = point.y + 1;
+                highXBoundary = point.x - 1;
                 break;
             case Direction.LEFT:
-                highXBoundary = point.x + 1;
+                highXBoundary = point.x - 1;
                 break;
             case Direction.UP_LEFT:
-                highYBoundary = point.y + 1;
-                highXBoundary = point.x + 1;
+                highYBoundary = point.y - 1;
+                highXBoundary = point.x - 1;
                 break;
             case Direction.NONE:
                 break;
